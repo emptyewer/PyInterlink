@@ -1,9 +1,9 @@
 import matplotlib as mpl
-mpl.use("Qt5Agg")
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+mpl.use("Qt4Agg")
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
-from PyQt5.QtWidgets import QSizePolicy
+from PyQt4 import QtGui
 
 class MplCanvas(FigureCanvas):
     """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
@@ -12,11 +12,12 @@ class MplCanvas(FigureCanvas):
         self.fig.patch.set_facecolor('white')
         self.fig.patch.set_alpha = 1.0
         self.axes = self.fig.add_subplot(111)
+        self.scatter = None
         # We want the axes cleared every time plot() is called
-        self.axes.hold(False)
+        self.axes.hold(True)
         FigureCanvas.__init__(self, self.fig)
         self.setParent(parent)
-        FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        FigureCanvas.setSizePolicy(self, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         self.setup_plot()
 
@@ -55,7 +56,7 @@ class View(MplCanvas):
         self.axes.tick_params(axis=u'both', which=u'both', length=0)
         self.axes.set_xlabel('Mass')
         self.axes.set_ylabel('Intensity')
-        ticks_font = mpl.font_manager.FontProperties(family='times new roman', style='normal', size=16, weight='normal',
+        ticks_font = mpl.font_manager.FontProperties(family='times new roman', style='normal', size=14, weight='normal',
                                                      stretch='normal')
 
         labels = [self.axes.title, self.axes.xaxis.label, self.axes.yaxis.label]
@@ -83,8 +84,22 @@ class View(MplCanvas):
             annotation.set_visible(False)
             self.annotations.append(annotation)
             self.points.append(read.mass_int[i][0])
+        self.scatter = None
         self.setup_plot()
         self.fig.canvas.draw()
+
+    def plot_fragment(self, fragments):
+        if self.scatter:
+            self.scatter.remove()
+        y_lim = self.axes.get_ylim()[1]
+        x = [f.mass for f in fragments]
+        y = [y_lim/2] * len(x)
+        # print x, y
+        self.scatter = self.axes.bar(x, y, width=1.0, linewidth=0, facecolor='r')
+        self.axes.relim()
+        self.axes.autoscale_view()
+        self.fig.canvas.draw()
+
 
 # class View(QtWidgets.QWidget):
 #     def __init__(self, parent=None):

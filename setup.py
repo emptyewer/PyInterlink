@@ -14,7 +14,9 @@ if sys.platform == 'darwin':
     import py2app
 elif sys.platform == 'win32':
     from distutils.core import setup
+    import py2exe
     import py2exe.build_exe
+    import py2exe.build_exe.isSystemDLL
 sys.setrecursionlimit(100000)
 
 def find_data_files(sources, targets, patterns):
@@ -73,25 +75,25 @@ if sys.platform == 'darwin':
         data_files=DATA_FILES_MAC,
     )
 elif sys.platform == 'win32':
-    # origIsSystemDLL = py2exe.build_exe.isSystemDLL
-    # def isSystemDLL(pathname):
-    #        if os.path.basename(pathname).lower() in ("msvcp71.dll", "dwmapi.dll", "'msvcp90.dll'"):
-    #                return 0
-    #        return origIsSystemDLL(pathname)
-    # py2exe.build_exe.isSystemDLL = isSystemDLL
-    # setup(
-    #     version='0.1',
-    #     description='Interlink',
-    #     author='Venkatramanan Krishnamani',
-    #     windows=[{"script":'interlink.py',
-    #                # "icon_resources": [(1, "icon/Icon.ico")],
-    #                "dest_base":"Interlink"
-    #             }],
-    #     data_files=DATA_FILES_WIN,
-    #     options={"py2exe": {'includes': INCLUDES,
-    #                         "optimize": 2,
-    #                         "compressed": 2,
-    #                         "bundle_files": 1,
-    #                         }}
-    # )
+    origIsSystemDLL = py2exe.build_exe.isSystemDLL
+    def isSystemDLL(pathname):
+           if os.path.basename(pathname).lower() in ("msvcp71.dll", "dwmapi.dll", "'msvcp90.dll'"):
+                   return 0
+           return origIsSystemDLL(pathname)
+    py2exe.build_exe.isSystemDLL = isSystemDLL
+    setup(
+        version='0.1',
+        description='Interlink',
+        author='Venkatramanan Krishnamani',
+        windows=[{"script":'interlink.py',
+                   # "icon_resources": [(1, "icon/Icon.ico")],
+                   "dest_base":"Interlink"
+                }],
+        data_files=DATA_FILES_WIN,
+        options={"py2exe": {'includes': INCLUDES,
+                            "optimize": 2,
+                            "compressed": 2,
+                            "bundle_files": 1,
+                            }}
+    )
 

@@ -1,10 +1,10 @@
-# Python 3
+# Python 2.7
 
 import os
 import re
 import sys
-import _thread
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+import thread
+from PyQt4 import QtCore, QtGui, uic
 
 import structs.sequence as sequence
 import structs.spectra as spectra
@@ -17,7 +17,7 @@ if sys.platform == 'win32':
 
 form_class, base_class = uic.loadUiType(ui_path)
 
-class MyTableWidgetItem(QtWidgets.QTableWidgetItem):
+class MyTableWidgetItem(QtGui.QTableWidgetItem):
     def __init__(self, *args):
         super(MyTableWidgetItem, self).__init__(*args)
         self.id = ''
@@ -25,20 +25,20 @@ class MyTableWidgetItem(QtWidgets.QTableWidgetItem):
     def get_id(self):
         return self.id
 
-class SortTableWidgetItem(QtWidgets.QTableWidgetItem):
+class SortTableWidgetItem(QtGui.QTableWidgetItem):
     def __init__(self, *args):
         super(SortTableWidgetItem, self).__init__(*args)
 
     def __lt__(self, other):
         if isinstance(other, SortTableWidgetItem):
-            self_data_value = float(str(self.data(QtCore.Qt.EditRole)))
-            other_data_value = float(str(other.data(QtCore.Qt.EditRole)))
+            self_data_value = float(str(self.data(QtCore.Qt.EditRole).toPyObject()))
+            other_data_value = float(str(other.data(QtCore.Qt.EditRole).toPyObject()))
             return self_data_value < other_data_value
         else:
             return QtGui.QTableWidgetItem.__lt__(self, other)
                 
 
-class InterLink(QtWidgets.QMainWindow, form_class):
+class InterLink(QtGui.QMainWindow, form_class):
     def __init__(self, *args):
         super(InterLink, self).__init__(*args)
         self.setupUi(self)
@@ -64,12 +64,13 @@ class InterLink(QtWidgets.QMainWindow, form_class):
         self.max_missed_cleavage.valueChanged.connect(self.cleave_protein)
         self.mass_list.itemSelectionChanged.connect(self.mass_spectra_selected)
         self.peptides_list.itemSelectionChanged.connect(self.peptide_selected)
+        self.binding_list.itemSelectionChanged.connect(self.binding_peptide_selected)
 
-        for checkbox in self.ion_type_group.findChildren(QtWidgets.QCheckBox):
+        for checkbox in self.ion_type_group.findChildren(QtGui.QCheckBox):
             checkbox.clicked.connect(self.fragment_peptides)
-        for radiobutton in self.charge_state_group.findChildren(QtWidgets.QRadioButton):
+        for radiobutton in self.charge_state_group.findChildren(QtGui.QRadioButton):
             radiobutton.clicked.connect(self.fragment_peptides)
-        for radiobutton in self.crosslinker_group.findChildren(QtWidgets.QRadioButton):
+        for radiobutton in self.crosslinker_group.findChildren(QtGui.QRadioButton):
             radiobutton.clicked.connect(self.cleave_protein)
 
         self.actionShow_Fragments_List.triggered.connect(self.show_hide_fragments_list)
@@ -113,8 +114,8 @@ class InterLink(QtWidgets.QMainWindow, form_class):
                 pep = MyTableWidgetItem("%s" % temp_pep.sequence)
                 pep.id = peptide_id
                 self.peptides_list.setItem(row, 0, pep)
-                self.peptides_list.setItem(row, 1, QtWidgets.QTableWidgetItem("+%d" % temp_pep.charge_state))
-                self.peptides_list.setItem(row, 2, QtWidgets.QTableWidgetItem("%.3f" % temp_pep.mass))
+                self.peptides_list.setItem(row, 1, QtGui.QTableWidgetItem("+%d" % temp_pep.charge_state))
+                self.peptides_list.setItem(row, 2, QtGui.QTableWidgetItem("%.3f" % temp_pep.mass))
                 row += 1
         self.peptides_list.resizeColumnsToContents()
         if row > 0:
@@ -130,10 +131,14 @@ class InterLink(QtWidgets.QMainWindow, form_class):
     def mass_spectra_selected(self):
         try:
             row = self.mass_list.selectedItems()[0]
-            _thread.start_new_thread(self.histogram.plot_figure, (self.spectra.reads[row.id],))
+            thread.start_new_thread(self.histogram.plot_figure, (self.spectra.reads[row.id],))
             self.update_binding_list()
         except IndexError:
             pass
+
+    def binding_peptide_selected(self):
+        peptide_id = self.binding_list.selectedItems()[0].get_id()
+        thread.start_new_thread(self.histogram.plot_fragment, (self.protein.peptides[peptide_id].fragments,))
     
     def update_consolidated_list(self):
         consolidated = {}
@@ -152,7 +157,7 @@ class InterLink(QtWidgets.QMainWindow, form_class):
         i = 0
         for key in consolidated.keys():
             normalized_score = float(consolidated[key])/len(key)
-            self.consolidated_list.setItem(i, 0, QtWidgets.QTableWidgetItem(key))
+            self.consolidated_list.setItem(i, 0, QtGui.QTableWidgetItem(key))
             self.consolidated_list.setItem(i, 1, SortTableWidgetItem("%.2f" % normalized_score))
             i += 1
         self.consolidated_list.resizeColumnsToContents()
@@ -168,7 +173,9 @@ class InterLink(QtWidgets.QMainWindow, form_class):
             self.binding_list.setRowCount(rows)
             i = 0
             for peptide_id in self.spectra.reads[mass_id].peptide_matches:
-                self.binding_list.setItem(i, 0, QtWidgets.QTableWidgetItem(self.protein.peptides[peptide_id].sequence))
+                pep = MyTableWidgetItem("%s" % self.protein.peptides[peptide_id].sequence)
+                pep.id = peptide_id
+                self.binding_list.setItem(i, 0, pep)
                 self.binding_list.setItem(i, 1, SortTableWidgetItem("%d" % self.spectra.reads[mass_id].peptide_scores[i]))
                 i += 1
             self.binding_list.resizeColumnsToContents()
@@ -184,8 +191,8 @@ class InterLink(QtWidgets.QMainWindow, form_class):
                 temp_item = MyTableWidgetItem("%f" % read.charge_adjusted_mass)
                 temp_item.id = id
                 self.mass_list.setItem(i, 0, temp_item)
-                self.mass_list.setItem(i, 1, QtWidgets.QTableWidgetItem("+%d" % read.charge_state))
-                self.mass_list.setItem(i, 2, QtWidgets.QTableWidgetItem("%f" % read.retention_time))
+                self.mass_list.setItem(i, 1, QtGui.QTableWidgetItem("+%d" % read.charge_state))
+                self.mass_list.setItem(i, 2, QtGui.QTableWidgetItem("%f" % read.retention_time))
                 score_item = SortTableWidgetItem("%d" % read.score)
                 if read.score >= self.pass_window.value():
                     score_item.setBackground(QtGui.QColor(110, 235, 131))
@@ -201,7 +208,7 @@ class InterLink(QtWidgets.QMainWindow, form_class):
         self.toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
 
         #Import peptide sequence action
-        importProteinAction = QtWidgets.QAction(QtGui.QIcon('icons/48/Files/add_file-48.png'),
+        importProteinAction = QtGui.QAction(QtGui.QIcon('icons/48/Files/add_file-48.png'),
                                        'Import Protein',
                                        self)
 
@@ -210,7 +217,7 @@ class InterLink(QtWidgets.QMainWindow, form_class):
         self.toolBar.addAction(importProteinAction)
 
         #Import mass spec data action
-        importSpectraAction = QtWidgets.QAction(QtGui.QIcon('icons/48/Files/add_file-48.png'),
+        importSpectraAction = QtGui.QAction(QtGui.QIcon('icons/48/Files/add_file-48.png'),
                                      'Import Spectra',
                                      self)
 
@@ -218,17 +225,17 @@ class InterLink(QtWidgets.QMainWindow, form_class):
         importSpectraAction.triggered.connect(self.import_mass_spectra)
         self.toolBar.addAction(importSpectraAction)
 
-        saveAction = QtWidgets.QAction(QtGui.QIcon('icons/48/User_Interface/save-48.png'),
+        saveAction = QtGui.QAction(QtGui.QIcon('icons/48/User_Interface/save-48.png'),
                                    'Save',
                                    self)
 
         saveAction.setShortcut('Ctrl+S')
         self.toolBar.addAction(saveAction)
 
-        right_spacer = QtWidgets.QWidget()
-        right_spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        right_spacer = QtGui.QWidget()
+        right_spacer.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         self.toolBar.addWidget(right_spacer)
-        settingsAction = QtWidgets.QAction(QtGui.QIcon('icons/48/User_Interface/vertical_settings_mixer-48.png'),
+        settingsAction = QtGui.QAction(QtGui.QIcon('icons/48/User_Interface/vertical_settings_mixer-48.png'),
                                        'Settings',
                                    self)
         settingsAction.setShortcut('Ctrl+X')
@@ -241,7 +248,7 @@ class InterLink(QtWidgets.QMainWindow, form_class):
             for frag in frags:
                 for mi in read.mass_int:
                     read_mass = mi[0]
-                    ppm_difference = abs((read_mass-frag.mass)*1000000/frag.mass)
+                    ppm_difference = abs(float(read_mass-frag.mass)*1000000.0/frag.mass)
                     if ppm_difference <= self.ppm_cutoff.value():
                         score += 1
             read.score = score
@@ -287,7 +294,7 @@ class InterLink(QtWidgets.QMainWindow, form_class):
         self.statusbar.showMessage("Searching all peptides against all MS2 read")
         self.show_ui_elements(False)
         peptide_id = self.peptides_list.selectedItems()[0].get_id()
-        _thread.start_new_thread(self.score_matches, (peptide_id,))
+        thread.start_new_thread(self.score_matches, (peptide_id,))
         
     def show_ui_elements(self, state=True):
         for widget in self.centralwidget.children():
@@ -310,10 +317,10 @@ class InterLink(QtWidgets.QMainWindow, form_class):
             self.fragments_list.clearContents()
             i = 0
             for fragment in self.protein.peptides[peptide_id].fragments:
-                self.fragments_list.setItem(i, 0, QtWidgets.QTableWidgetItem(fragment.sequence))
-                self.fragments_list.setItem(i, 1, QtWidgets.QTableWidgetItem(fragment.ion_type))
-                self.fragments_list.setItem(i, 2, QtWidgets.QTableWidgetItem("+%d" % fragment.charge))
-                self.fragments_list.setItem(i, 3, QtWidgets.QTableWidgetItem(str(fragment.mass)))
+                self.fragments_list.setItem(i, 0, QtGui.QTableWidgetItem(fragment.sequence))
+                self.fragments_list.setItem(i, 1, QtGui.QTableWidgetItem(fragment.ion_type))
+                self.fragments_list.setItem(i, 2, QtGui.QTableWidgetItem("+%d" % fragment.charge))
+                self.fragments_list.setItem(i, 3, QtGui.QTableWidgetItem(str(fragment.mass)))
                 i += 1
             self.fragments_list.resizeColumnsToContents()
         except IndexError:
@@ -328,14 +335,14 @@ class InterLink(QtWidgets.QMainWindow, form_class):
 
     def import_peptide(self, file_name=None):
         if not file_name:
-            dlg = QtWidgets.QFileDialog()
-            dlg.setFileMode(QtWidgets.QFileDialog.AnyFile)
+            dlg = QtGui.QFileDialog()
+            dlg.setFileMode(QtGui.QFileDialog.AnyFile)
             dlg.setWindowTitle("Import Peptide Sequence")
             dlg.setNameFilters(["Peptide Sequence Files (*.fasta)"])
             if dlg.exec_():
                 self.protein = sequence.protein(dlg.selectedFiles()[0])
         else:
-            self.protein = sequence.protein("/Users/Venky/Work/Softwares/Interlink/test_files/HDH_wt.fasta")
+            self.protein = sequence.protein("./test_files/HDH_wt.fasta")
         self.protein.parse_fasta()
         self.protein_sequence_title.setText(self.protein.name)
         self.protein_sequence.setText(self.protein.sequence)
@@ -343,14 +350,14 @@ class InterLink(QtWidgets.QMainWindow, form_class):
 
     def import_mass_spectra(self, file_name=None):
         if not file_name:
-            dlg = QtWidgets.QFileDialog()
-            dlg.setFileMode(QtWidgets.QFileDialog.AnyFile)
+            dlg = QtGui.QFileDialog()
+            dlg.setFileMode(QtGui.QFileDialog.AnyFile)
             dlg.setWindowTitle("Import Mass Spectra")
             dlg.setNameFilters(["Mass Spectra Files (*.ms2)"])
             if dlg.exec_():
                 self.spectra = spectra.spectra(dlg.selectedFiles()[0])
         else:
-            self.spectra = spectra.spectra("/Users/Venky/Work/Softwares/Interlink/test_files/CM_151128_Elite_32_N94HDH_gel_band_UV_HCD_rerun.ms2")
+            self.spectra = spectra.spectra("./test_files/CM_151128_Elite_32_N94HDH_gel_band_UV_CID.ms2")
         self.spectra.parse_spectra()
 
     def open_settings(self):
@@ -358,14 +365,14 @@ class InterLink(QtWidgets.QMainWindow, form_class):
         
     def get_selected_ion_types(self):
         ion_types = []
-        for checkbox in self.ion_type_group.findChildren(QtWidgets.QCheckBox):
+        for checkbox in self.ion_type_group.findChildren(QtGui.QCheckBox):
             if checkbox.isChecked():
                 ion_types.append(str(checkbox.text()))
         return ion_types
     
     def get_max_fragment_charge(self):
         charge = 1
-        for radiobutton in self.charge_state_group.findChildren(QtWidgets.QRadioButton):
+        for radiobutton in self.charge_state_group.findChildren(QtGui.QRadioButton):
             if radiobutton.isChecked():
                 txt = str(radiobutton.text())
                 charge_string = txt.split(',')
@@ -377,7 +384,7 @@ class InterLink(QtWidgets.QMainWindow, form_class):
         self.import_mass_spectra(file_name="default")
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
+    app = QtGui.QApplication(sys.argv)
     form = InterLink()
     form.show()
     app.exec_()
