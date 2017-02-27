@@ -10,6 +10,8 @@ class ms_read():
         self.charge_adjusted_mass = 0.0
         self.mass_int = []
         self.score = 0.0
+        self.peptide_matches = []
+        self.peptide_scores = []
 
     def __repr__(self):
         return "Intensity: %f, Score: %f" % (self.intensity_ms1, self.score)
@@ -18,6 +20,7 @@ class spectra():
     def __init__(self, filename=None):
         self.filename = filename
         self.reads = {}
+        self.hits = 0
         self.parse_options = {
             0: self.s_matched,
             1: self.r_matched,
@@ -25,8 +28,7 @@ class spectra():
             3: self.z_matched,
             4: self.m_matched,
         }
-
-
+        
     def s_matched(self, read, line):
         split = line.split()
         read.scan_number = int(split[1])
