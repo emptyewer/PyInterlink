@@ -86,7 +86,7 @@ class InterLink(QtGui.QMainWindow, main_class):
         self.workflow_window.setGeometry(10, self.height() + 50,
                                          self.workflow_window.width(), self.workflow_window.height())
         self.workflow_window.show()
-        self.load_test_files()
+        # self.load_test_files()
 
     def setup_signals(self):
         self.protein_sequence.textChanged.connect(self.protein_sequence_edited)
