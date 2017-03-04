@@ -7,8 +7,8 @@ from PyQt4 import QtGui
 
 class MplCanvas(FigureCanvas):
     """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        self.fig = Figure(figsize=(width, height), dpi=dpi, tight_layout=True)
+    def __init__(self, parent=None, width=5, height=4):
+        self.fig = Figure(figsize=(width, height), tight_layout=True)
         self.fig.patch.set_facecolor('white')
         self.fig.patch.set_alpha = 1.0
         self.axes = self.fig.add_subplot(111)
@@ -21,7 +21,7 @@ class MplCanvas(FigureCanvas):
         FigureCanvas.updateGeometry(self)
         self.setup_plot()
 
-    def plot_figure(self, read):
+    def plot_figure(self, read, color):
         pass
 
     def setup_plot(self):
@@ -56,31 +56,32 @@ class View(MplCanvas):
         self.axes.tick_params(axis=u'both', which=u'both', length=0)
         self.axes.set_xlabel('Mass')
         self.axes.set_ylabel('Intensity')
-        ticks_font = mpl.font_manager.FontProperties(family='times new roman', style='normal', size=14, weight='normal',
+        ticks_font = mpl.font_manager.FontProperties(family='times new roman', style='normal', size=10, weight='normal',
                                                      stretch='normal')
 
         labels = [self.axes.title, self.axes.xaxis.label, self.axes.yaxis.label]
         labels += self.axes.get_xticklabels() + self.axes.get_yticklabels()
         for item in labels:
             item.set_fontproperties(ticks_font)
-            item.set_fontsize(16)
+            item.set_fontsize(10)
         self.fig.canvas.mpl_connect('motion_notify_event', self.on_plot_hover)
 
-    def plot_figure(self, read):
+    def plot_figure(self, read, color):
         self.axes.clear()
         self.annotations = []
         self.points = []
         masses = [x[0] for x in read.mass_int]
         intensities = [x[1] for x in read.mass_int]
-        self.axes.bar(masses, intensities, width=1.0, linewidth=0)
+        self.axes.bar(masses, intensities, width=1.0, linewidth=0, facecolor=color)
         for i in range(len(read.mass_int)):
             annotation = self.axes.annotate("Mass: %.3f" % read.mass_int[i][0],
-                                     xy=(read.mass_int[i][0], read.mass_int[i][1]), xycoords='data',
-                                     xytext=(read.mass_int[i][0], read.mass_int[i][1]), textcoords='data',
-                                     horizontalalignment="center",
-                                     bbox=dict(boxstyle="round", facecolor="w",
-                                               edgecolor="0.5", alpha=0.7)
-                                     )
+                                            xy=(read.mass_int[i][0], read.mass_int[i][1]), xycoords='data',
+                                            xytext=(read.mass_int[i][0], read.mass_int[i][1]), textcoords='data',
+                                            horizontalalignment="center", bbox=dict(boxstyle="round",
+                                                                                    facecolor="w",
+                                                                                    edgecolor="0.5",
+                                                                                    alpha=0.7)
+                                            )
             annotation.set_visible(False)
             self.annotations.append(annotation)
             self.points.append(read.mass_int[i][0])
@@ -154,7 +155,7 @@ class View(MplCanvas):
         #     rect.set_facecolor(c)
         #     count += 1
         # self.fig.patch.set_facecolor((0.886, 0.886, 0.886))
-        ticks_font = mpl.font_manager.FontProperties(family='times new roman', style='normal', size=12, weight='normal',
+        ticks_font = mpl.font_manager.FontProperties(family='times new roman', style='normal', size=10, weight='normal',
                                                      stretch='normal')
         labels = [self.axes.title, self.axes.xaxis.label, self.axes.yaxis.label]
         labels += self.axes.get_xticklabels() + self.axes.get_yticklabels()

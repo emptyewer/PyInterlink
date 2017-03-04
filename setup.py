@@ -16,8 +16,20 @@ elif sys.platform == 'win32':
     from distutils.core import setup
     import py2exe
     import py2exe.build_exe
-    import py2exe.build_exe.isSystemDLL
 sys.setrecursionlimit(100000)
+
+from distutils.filelist import findall
+import matplotlib
+matplotlibdatadir = matplotlib.get_data_path()
+matplotlibdata = findall(matplotlibdatadir)
+matplotlibdata_files = []
+for f in matplotlibdata:
+	dirname = os.path.join('matplotlib', f[len(matplotlibdatadir)+1:])
+	matplotlibdata_files.append((os.path.split(dirname)[0], [f]))
+
+matplotlibdata_files += [(r'mpl-data', glob.glob(r'C:\Python25\Lib\site-packages\matplotlib\mpl-data\*.*')),
+                  (r'mpl-data\images',glob.glob(r'C:\Python25\Lib\site-packages\matplotlib\mpl-data\images\*.*')),
+                  (r'mpl-data\fonts',glob.glob(r'C:\Python25\Lib\site-packages\matplotlib\mpl-data\fonts\*.*'))]
 
 def find_data_files(sources, targets, patterns):
     """Locates the specified data-files and returns the matches
@@ -46,25 +58,28 @@ def find_data_files(sources, targets, patterns):
 
 
 APP = ['interlink.py']
-INCLUDES = ['sip', 'PyQt4', 'operator', 'sys', 'os']
+INCLUDES = ['sip', 'PyQt4', 'operator', 'sys', 'os', 'matplotlib', "matplotlib.backends",  "matplotlib.backends.backend_qt4agg"]
 OPTIONS = {'argv_emulation': True,
            'includes': INCLUDES,
            'iconfile' : 'icons/Icon.icns',
            'plist': {'CFBundleGetInfoString': 'Interlink',
                      'CFBundleIdentifier': 'edu.uiowa.ahern.interlink',
-                     'CFBundleShortVersionString': '0.1',
+                     'CFBundleShortVersionString': '0.2',
                      'CFBundleName': 'Interlink',
-                     'CFBundleVersion': '01',
+                     'CFBundleVersion': '02',
                      'NSHumanReadableCopyright': '(c) 2016 Venkatramanan Krishnamani'},
            'excludes': ['PyQt4.QtDesigner', 'PyQt4.QtNetwork', 'PyQt4.QtOpenGL', 'PyQt4.QtScript', 'PyQt4.QtSql', 'PyQt4.QtTest', 'PyQt4.QtWebKit', 'PyQt4.QtXml', 'PyQt4.phonon'],}
 
-DATA_FILES_MAC = find_data_files(['structs', 'structs/pyteomics', 'ui/mac', 'icons/48/User_Interface'],
-                                 ['structs', 'structs/pyteomics', 'ui/mac', 'icons/48/User_Interface'],
-                                 ['*.py', '*.py', '*.ui', '*'])
+DATA_FILES_MAC = find_data_files(['structs', 'structs/pyteomics', 'ui/mac', 'icons/48/User_Interface', 'icons/48/Files', 'icons'],
+                                 ['structs', 'structs/pyteomics', 'ui/mac', 'icons/48/User_Interface', 'icons/48/Files', 'icons'],
+                                 ['*.py', '*.py', '*.ui', '*', '*', '*.png'])
 
-DATA_FILES_WIN = find_data_files(['structs', 'structs/pyteomics', 'ui/win', 'icons/48/User_Interface'],
-                             ['structs', 'structs/pyteomics', 'ui/win', 'icons/48/User_Interface'],
-                             ['*.py', '*.py', '*.ui', '*'])
+DATA_FILES_WIN = find_data_files(['structs', 'structs/pyteomics', 'ui/win', 'icons/48/User_Interface', 'icons/48/Files', 'icons'],
+                             ['structs', 'structs/pyteomics', 'ui/win', 'icons/48/User_Interface', 'icons/48/Files', 'icons'],
+                             ['*.py', '*.py', '*.ui', '*', '*', '*.png'])
+
+DATA_FILES_WIN += matplotlibdata_files
+
 if sys.platform == 'darwin':
     setup(
         app=APP,
@@ -93,7 +108,5 @@ elif sys.platform == 'win32':
         options={"py2exe": {'includes': INCLUDES,
                             "optimize": 2,
                             "compressed": 2,
-                            "bundle_files": 1,
                             }}
     )
-
